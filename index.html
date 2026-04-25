@@ -530,6 +530,27 @@
   body.role-staff .nav-btn[data-page="admin"] { display: none; }
   body.role-staff .nav-btn[data-page="review"] { display: none; }
 
+
+  /* ── SUBMISSIONS LIST ── */
+  .submission-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .submission-row:hover { box-shadow: var(--shadow); border-color: var(--accent2); transform: translateX(4px); }
+  .submission-icon { font-size: 24px; }
+  .submission-info { flex: 1; }
+  .submission-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .submission-date { font-size: 13px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .submission-arrow { font-size: 18px; color: var(--text3); }
+
 </style>
 </head>
 <body>
@@ -591,11 +612,28 @@
 <!--  PAGE 2: ORDER REVIEW             -->
 <!-- ══════════════════════════════════ -->
 <div class="page" id="page-review">
-  <div class="page-title">Επεξεργασία Παραγγελίας</div>
-  <div class="page-subtitle">Έλεγξε και τροποποίησε τις ποσότητες πριν την εξαγωγή</div>
+  <div id="review-list-view">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;">
+      <div>
+        <div class="page-title">Order Review</div>
+        <div class="page-subtitle">Select a submission to review and export</div>
+      </div>
+      <button class="btn btn-secondary" onclick="loadSubmissions()">↻ Refresh</button>
+    </div>
+    <div id="submissions-list">
+      <div class="loader"><div class="spinner"></div>Loading submissions…</div>
+    </div>
+  </div>
 
-  <div id="review-content">
-    <div class="empty">⬅️ Πρώτα συμπλήρωσε το stock από την καρτέλα Καταχώρηση</div>
+  <div id="review-detail-view" style="display:none">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
+      <button class="btn btn-secondary btn-sm" onclick="backToSubmissions()">← Back</button>
+      <div>
+        <div class="page-title" id="review-detail-title">Order</div>
+        <div class="page-subtitle" id="review-detail-subtitle" style="margin-bottom:0"></div>
+      </div>
+    </div>
+    <div id="review-content"></div>
   </div>
 </div>
 
@@ -823,6 +861,7 @@ function showPage(name, silent = false) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   if (name === 'admin') renderEmployeeAdmin();
+  if (name === 'review') { document.getElementById('review-list-view').style.display='block'; document.getElementById('review-detail-view').style.display='none'; loadSubmissions(); }
   if (!silent) {
     const btn = document.querySelector(`.nav-btn[data-page="${name}"]`);
     if (btn) btn.classList.add('active');
@@ -884,7 +923,7 @@ async function submitStock() {
   try {
     const entryRes = await api('stock_entries', {
       method: 'POST',
-      body: JSON.stringify({ submitted_by: 'υπάλληλος' })
+      body: JSON.stringify({ submitted_by: currentUser ? currentUser.name : 'υπάλληλος' })
     });
     const [entry] = await entryRes.json();
 
@@ -901,28 +940,98 @@ async function submitStock() {
     toast('⚠ Αποθήκευση απέτυχε – τα δεδομένα εμφανίζονται κανονικά', true);
   }
 
-  renderReview();
+  // Reset form and show success
+  toast('✓ Stock submitted successfully!');
+  
+  // Reset all inputs to 0
+  products.forEach(p => {
+    const tmxEl = document.getElementById('tmx-' + p.id);
+    const kivEl = document.getElementById('kiv-' + p.id);
+    if (tmxEl) tmxEl.value = 0;
+    if (kivEl) kivEl.value = 0;
+  });
 
-  // Switch to review page
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-review').classList.add('active');
-  document.querySelectorAll('.nav-btn')[1].classList.add('active');
+  // Show success message briefly
+  const list = document.getElementById('stock-list');
+  const original = list.innerHTML;
+  list.innerHTML = `<div style="text-align:center;padding:60px;color:var(--accent)">
+    <div style="font-size:48px;margin-bottom:16px">✅</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px">Stock submitted!</div>
+    <div style="font-size:14px;color:var(--text3)">Thank you. The order has been calculated.</div>
+  </div>`;
+  setTimeout(() => { list.innerHTML = original; }, 2500);
 }
 
-// ── REVIEW ──
-function renderReview() {
-  const el = document.getElementById('review-content');
+// ── SUBMISSIONS LIST ──
+let currentSubmission = null;
+let currentOrderData = [];
 
+async function loadSubmissions() {
+  const el = document.getElementById('submissions-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div>Loading…</div>';
+  
+  const res = await api('stock_entries?order=submitted_at.desc&limit=20');
+  const entries = await res.json();
+  
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty">No submissions yet</div>';
+    return;
+  }
+
+  el.innerHTML = entries.map(e => {
+    const date = new Date(e.submitted_at).toLocaleDateString('el-GR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    return `
+      <div class="submission-row" onclick="openSubmission(${e.id}, '${e.submitted_by}', '${date}')">
+        <div class="submission-icon">📋</div>
+        <div class="submission-info">
+          <div class="submission-name">${e.submitted_by}</div>
+          <div class="submission-date">${date}</div>
+        </div>
+        <div class="submission-arrow">→</div>
+      </div>`;
+  }).join('');
+}
+
+async function openSubmission(entryId, submittedBy, date) {
+  document.getElementById('review-list-view').style.display = 'none';
+  document.getElementById('review-detail-view').style.display = 'block';
+  document.getElementById('review-detail-title').textContent = `Order – ${submittedBy}`;
+  document.getElementById('review-detail-subtitle').textContent = date;
+
+  // Load items for this entry
+  const res = await api(`stock_entry_items?entry_id=eq.${entryId}&select=*,products(*)`);
+  const items = await res.json();
+  
+  currentOrderData = items.map(item => ({
+    product: item.products,
+    qty_pieces: parseFloat(item.qty_pieces) || 0,
+    qty_boxes: parseInt(item.qty_boxes) || 0,
+    order_qty: parseInt(item.order_qty) || 0
+  }));
+
+  renderReviewDetail();
+}
+
+function backToSubmissions() {
+  document.getElementById('review-list-view').style.display = 'block';
+  document.getElementById('review-detail-view').style.display = 'none';
+  currentOrderData = [];
+}
+
+function renderReviewDetail() {
+  const el = document.getElementById('review-content');
   const categories = [
     { key: 'pet_city', label: '🐾 Pet City' },
     { key: 'supermarket', label: '🛒 Supermarket' }
   ];
 
-  const orderCount = orderData.filter(d => d.order_qty > 0).length;
+  const orderCount = currentOrderData.filter(d => d.order_qty > 0).length;
   let html = `
     <div class="summary-bar">
-      📦 <strong>${orderCount}</strong> είδη χρειάζονται παραγγελία
+      📦 <strong>${orderCount}</strong> items need ordering
       <div style="margin-left:auto; display:flex; gap:8px;">
         <button class="btn btn-secondary btn-sm" onclick="exportPDF('pet_city')">📄 PDF Pet City</button>
         <button class="btn btn-secondary btn-sm" onclick="exportPDF('supermarket')">📄 PDF Supermarket</button>
@@ -930,7 +1039,7 @@ function renderReview() {
     </div>`;
 
   categories.forEach(cat => {
-    const items = orderData.filter(d => d.product.category === cat.key);
+    const items = currentOrderData.filter(d => d.product && d.product.category === cat.key);
     if (!items.length) return;
 
     html += `<div class="section-label">${cat.label}</div>
@@ -970,14 +1079,14 @@ function renderReview() {
 }
 
 function updateOrderQty(cat, i, val) {
-  const items = orderData.filter(d => d.product.category === cat);
+  const items = currentOrderData.filter(d => d.product && d.product.category === cat);
   if (items[i]) items[i].order_qty = parseInt(val) || 0;
 }
 
 function deleteReviewRow(cat, i) {
   const row = document.getElementById(`row-${cat}-${i}`);
   if (row) row.remove();
-  const items = orderData.filter(d => d.product.category === cat);
+  const items = currentOrderData.filter(d => d.product && d.product.category === cat);
   if (items[i]) items[i]._deleted = true;
 }
 
@@ -1008,7 +1117,7 @@ function exportPDF(category) {
 
   // Collect rows from table
   const tbody = document.getElementById('tbody-' + category);
-  if (!tbody) { toast('Δεν υπάρχουν δεδομένα για αυτή την κατηγορία', true); return; }
+  if (!tbody) { toast('No data for this category', true); return; }
 
   const rows = Array.from(tbody.querySelectorAll('tr')).map(tr => {
     const cells = tr.querySelectorAll('td');
