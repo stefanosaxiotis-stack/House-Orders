@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>House Orders – Stock Manager</title>
+<title>House Orders</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -84,6 +84,28 @@
     margin-bottom: 4px;
   }
   .page-subtitle { font-size: 14px; color: var(--text3); margin-bottom: 28px; }
+
+  /* ── CATEGORY SWITCHER ── */
+  .cat-switcher {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .cat-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cat-btn:hover { border-color: var(--accent2); color: var(--accent); }
+  .cat-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 4px 12px rgba(45,106,79,0.25); }
 
   /* ── STOCK FORM ── */
   .product-card {
@@ -412,10 +434,10 @@
 
 <!-- HEADER -->
 <header class="header">
-  <div class="header-logo">House Orders <span>/ Stock Manager</span></div>
+  <div class="header-logo">House Orders</div>
   <nav class="header-nav">
-    <button class="nav-btn active" onclick="showPage('stock')">📋 Καταχώρηση</button>
-    <button class="nav-btn" onclick="showPage('review')">🧾 Παραγγελία</button>
+    <button class="nav-btn active" onclick="showPage('stock')">📋 Add Stock</button>
+    <button class="nav-btn" onclick="showPage('review')">🧾 Order Review</button>
     <button class="nav-btn" onclick="showPage('admin')">⚙️ Admin</button>
   </nav>
 </header>
@@ -424,15 +446,20 @@
 <!--  PAGE 1: STOCK ENTRY              -->
 <!-- ══════════════════════════════════ -->
 <div class="page active" id="page-stock">
-  <div class="page-title">Καταχώρηση Stock</div>
-  <div class="page-subtitle">Συμπλήρωσε το τρέχον απόθεμα για κάθε προϊόν</div>
+  <div class="page-title">Add Stock</div>
+  <div class="page-subtitle">Select a category and fill in the current stock for each product</div>
+
+  <div class="cat-switcher">
+    <button class="cat-btn active" id="cat-btn-pet_city" onclick="switchCategory('pet_city')">🐾 Pet City</button>
+    <button class="cat-btn" id="cat-btn-supermarket" onclick="switchCategory('supermarket')">🛒 Supermarket</button>
+  </div>
 
   <div id="stock-list">
-    <div class="loader"><div class="spinner"></div>Φόρτωση προϊόντων…</div>
+    <div class="loader"><div class="spinner"></div>Loading products…</div>
   </div>
 
   <div class="action-bar">
-    <button class="btn btn-primary" onclick="submitStock()">✓ Υποβολή &amp; Υπολογισμός Παραγγελίας</button>
+    <button class="btn btn-primary" onclick="submitStock()">✓ Submit &amp; Calculate Order</button>
   </div>
 </div>
 
@@ -532,6 +559,16 @@ let products = [];
 let editingId = null;
 let orderData = []; // [{product, order_qty, unit}]
 
+// ── ACTIVE CATEGORY ──
+let activeCategory = 'pet_city';
+
+function switchCategory(cat) {
+  activeCategory = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('cat-btn-' + cat).classList.add('active');
+  renderStockList();
+}
+
 // ── INIT ──
 loadProducts();
 
@@ -555,40 +592,34 @@ function renderStockList() {
   const el = document.getElementById('stock-list');
   if (!products.length) { el.innerHTML = '<div class="empty">Δεν βρέθηκαν προϊόντα</div>'; return; }
 
-  const categories = [
-    { key: 'pet_city', label: '🐾 Pet City' },
-    { key: 'supermarket', label: '🛒 Supermarket' }
-  ];
+  const items = products.filter(p => p.category === activeCategory);
+  if (!items.length) { el.innerHTML = '<div class="empty">No products in this category</div>'; return; }
 
   let html = '';
-  categories.forEach(cat => {
-    const items = products.filter(p => p.category === cat.key);
-    if (!items.length) return;
-    html += `<div class="section-label">${cat.label}</div>`;
-    items.forEach(p => {
-      const imgEl = p.image_url
-        ? `<img class="product-img" src="${p.image_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
-        : '';
-      html += `
-        <div class="product-card">
-          ${imgEl}
-          <div class="product-img-placeholder" style="${p.image_url ? 'display:none' : ''}">📦</div>
-          <div>
-            <div class="product-name">${p.name}</div>
-            <div class="product-unit-badge">Υπολ: ${p.unit} · Min: ${p.min_stock}</div>
+  items.forEach(p => {
+    const countAs = p.unit === 'κιβώτιο' ? 'Box' : 'Pieces';
+    const imgEl = p.image_url
+      ? `<img class="product-img" src="${p.image_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
+      : '';
+    html += `
+      <div class="product-card">
+        ${imgEl}
+        <div class="product-img-placeholder" style="${p.image_url ? 'display:none' : ''}">📦</div>
+        <div>
+          <div class="product-name">${p.name}</div>
+          <div class="product-unit-badge">Count as: ${countAs} · Min: ${p.min_stock}</div>
+        </div>
+        <div class="qty-inputs">
+          <div class="qty-group">
+            <span class="qty-label">Pieces</span>
+            <input class="qty-input" type="number" min="0" id="tmx-${p.id}" value="0">
           </div>
-          <div class="qty-inputs">
-            <div class="qty-group">
-              <span class="qty-label">Τεμάχια</span>
-              <input class="qty-input" type="number" min="0" id="tmx-${p.id}" value="0">
-            </div>
-            <div class="qty-group">
-              <span class="qty-label">Κιβώτια</span>
-              <input class="qty-input" type="number" min="0" id="kiv-${p.id}" value="0">
-            </div>
+          <div class="qty-group">
+            <span class="qty-label">Box</span>
+            <input class="qty-input" type="number" min="0" id="kiv-${p.id}" value="0">
           </div>
-        </div>`;
-    });
+        </div>
+      </div>`;
   });
   el.innerHTML = html;
 }
@@ -661,11 +692,11 @@ function renderReview() {
     html += `<div class="section-label">${cat.label}</div>
     <table class="review-table">
       <thead><tr>
-        <th>Προϊόν</th>
-        <th>Stock (Τεμ/Κιβ)</th>
-        <th>Μονάδα</th>
+        <th>Product</th>
+        <th>Stock (Pcs/Box)</th>
+        <th>Unit</th>
         <th>Min</th>
-        <th>Παραγγελία</th>
+        <th>Order Qty</th>
         <th></th>
       </tr></thead>
       <tbody id="tbody-${cat.key}">`;
@@ -681,14 +712,14 @@ function renderReview() {
           <td>
             ${hasOrder
               ? `<input class="review-input" type="number" min="0" value="${d.order_qty}" onchange="updateOrderQty('${cat.key}',${i},this.value)">`
-              : `<span class="tag-zero">Επαρκές</span>`}
+              : `<span class="tag-zero">OK</span>`}
           </td>
-          <td><button class="delete-row-btn" onclick="deleteReviewRow('${cat.key}',${i})" title="Αφαίρεση">✕</button></td>
+          <td><button class="delete-row-btn" onclick="deleteReviewRow('${cat.key}',${i})" title="Remove">✕</button></td>
         </tr>`;
     });
 
     html += `</tbody></table>
-    <button class="add-manual-btn" onclick="addManualRow('${cat.key}')">+ Προσθήκη χειροκίνητης γραμμής</button>`;
+    <button class="add-manual-btn" onclick="addManualRow('${cat.key}')">+ Add manual row</button>`;
   });
 
   el.innerHTML = html;
@@ -714,11 +745,11 @@ function addManualRow(cat) {
   tr.className = 'manual-row';
   tr.id = id;
   tr.innerHTML = `
-    <td><input class="review-input" style="width:100%" placeholder="Όνομα είδους" id="${id}-name"></td>
+    <td><input class="review-input" style="width:100%" placeholder="Product name" id="${id}-name"></td>
     <td>—</td>
     <td><select class="review-input" id="${id}-unit" style="width:100%">
-      <option value="τεμάχιο">Τεμ.</option>
-      <option value="κιβώτιο">Κιβ.</option>
+      <option value="τεμάχιο">Pcs</option>
+      <option value="κιβώτιο">Box</option>
     </select></td>
     <td>—</td>
     <td><input class="review-input" type="number" min="0" value="1" id="${id}-qty"></td>
@@ -737,7 +768,7 @@ function exportPDF(category) {
 
   const rows = Array.from(tbody.querySelectorAll('tr')).map(tr => {
     const cells = tr.querySelectorAll('td');
-    const nameInput = tr.querySelector('input[placeholder="Όνομα είδους"]');
+    const nameInput = tr.querySelector('input[placeholder="Product name"]');
     const qtyInput = tr.querySelector('input[type="number"]');
     const unitSelect = tr.querySelector('select');
     if (nameInput) {
@@ -753,9 +784,9 @@ function exportPDF(category) {
     const unit = cells[2]?.textContent?.trim();
     const qtyEl = cells[4]?.querySelector('input');
     const qty = qtyEl ? qtyEl.value : cells[4]?.textContent?.trim();
-    if (!name || qty === 'Επαρκές') return null;
+    if (!name || qty === 'OK') return null;
     return { name, unit, qty };
-  }).filter(r => r && r.name && r.name !== '—' && r.qty && r.qty !== 'Επαρκές');
+  }).filter(r => r && r.name && r.name !== '—' && r.qty && r.qty !== 'OK');
 
   const tableRows = rows.map(r => `
     <tr>
