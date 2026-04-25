@@ -552,6 +552,7 @@
   .submission-arrow { font-size: 18px; color: var(--text3); }
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -1115,57 +1116,89 @@ function exportPDF(category) {
   const catLabel = category === 'pet_city' ? 'Pet City' : 'Supermarket';
   const now = new Date().toLocaleDateString('el-GR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
-  // Collect rows from table
   const tbody = document.getElementById('tbody-' + category);
   if (!tbody) { toast('No data for this category', true); return; }
 
+  // Collect rows
   const rows = Array.from(tbody.querySelectorAll('tr')).map(tr => {
     const cells = tr.querySelectorAll('td');
     const nameInput = tr.querySelector('input[placeholder="Product name"]');
     const qtyInput = tr.querySelector('input[type="number"]');
     const unitSelect = tr.querySelector('select');
     if (nameInput) {
-      // Manual row
       return {
         name: nameInput.value || '—',
-        unit: unitSelect ? unitSelect.value : '—',
+        unit: unitSelect ? (unitSelect.value === 'κιβώτιο' ? 'Box' : 'Pcs') : '—',
         qty: qtyInput ? qtyInput.value : '—'
       };
     }
-    // Normal row
     const name = cells[0]?.textContent?.trim();
     const unit = cells[2]?.textContent?.trim();
     const qtyEl = cells[4]?.querySelector('input');
     const qty = qtyEl ? qtyEl.value : cells[4]?.textContent?.trim();
     if (!name || qty === 'OK') return null;
-    return { name, unit, qty };
+    const unitLabel = unit === 'κιβώτιο' ? 'Box' : unit === 'τεμάχιο' ? 'Pcs' : unit;
+    return { name, unit: unitLabel, qty };
   }).filter(r => r && r.name && r.name !== '—' && r.qty && r.qty !== 'OK');
 
-  const tableRows = rows.map(r => `
-    <tr>
-      <td>${r.name}</td>
-      <td style="text-align:center">${r.qty}</td>
-      <td>${r.unit}</td>
+  if (!rows.length) { toast('No items to export', true); return; }
+
+  const tableRows = rows.map((r, i) => `
+    <tr style="background:${i % 2 === 0 ? '#fff' : '#f8f8f6'}">
+      <td style="padding:10px 14px;border-bottom:1px solid #eee;font-size:13px">${r.name}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #eee;font-size:13px;text-align:center;font-weight:700">${r.qty}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #eee;font-size:13px;color:#888">${r.unit}</td>
     </tr>`).join('');
 
-  const preview = document.getElementById('pdf-preview');
-  preview.innerHTML = `
-    <div class="pdf-header">
-      <div class="pdf-title">Παραγγελία – ${catLabel}</div>
-      <div class="pdf-date">Ημερομηνία: ${now}</div>
-    </div>
-    <table class="pdf-table">
-      <thead><tr>
-        <th>Προϊόν</th>
-        <th style="width:100px;text-align:center">Ποσότητα</th>
-        <th style="width:100px">Μονάδα</th>
-      </tr></thead>
-      <tbody>${tableRows}</tbody>
-    </table>`;
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order ${catLabel} – ${now}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; background: #f5f4f0; }
+  .header { background: #2d6a4f; color: #fff; padding: 20px 24px; }
+  .header h1 { font-size: 20px; font-weight: 700; }
+  .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+  .print-btn {
+    display: block; width: calc(100% - 32px); margin: 16px;
+    background: #2d6a4f; color: #fff; border: none;
+    padding: 14px; border-radius: 10px; font-size: 16px;
+    font-weight: 600; cursor: pointer; text-align: center;
+  }
+  table { width: calc(100% - 32px); margin: 0 16px 32px; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  thead tr { background: #2d6a4f; }
+  th { color: #fff; padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  @media print {
+    .print-btn { display: none; }
+    body { background: #fff; }
+    table { width: 100%; margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Order – ${catLabel}</h1>
+  <p>${now} &nbsp;·&nbsp; House Orders</p>
+</div>
+<button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+<table>
+  <thead><tr>
+    <th>Product</th>
+    <th style="text-align:center;width:80px">Qty</th>
+    <th style="width:70px">Unit</th>
+  </tr></thead>
+  <tbody>${tableRows}</tbody>
+</table>
+</body>
+</html>`;
 
-  preview.style.display = 'block';
-  window.print();
-  preview.style.display = 'none';
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  toast('✓ Order opened in new tab');
 }
 
 // ── ADMIN ──
