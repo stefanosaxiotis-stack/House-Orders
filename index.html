@@ -428,18 +428,142 @@
     .qty-input { width: 64px; }
     .page { padding: 20px 16px; }
   }
+
+  /* ── LOGIN SCREEN ── */
+  .login-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    flex-direction: column;
+  }
+  .login-screen.hidden { display: none; }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    width: 360px;
+    max-width: 95vw;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+  }
+  .login-logo {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .login-subtitle { font-size: 14px; color: var(--text3); margin-bottom: 32px; }
+  .employee-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .employee-btn {
+    padding: 14px 10px;
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .employee-btn:hover { border-color: var(--accent2); background: var(--accent-light); color: var(--accent); }
+  .employee-btn.selected { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .pin-section { margin-top: 8px; }
+  .pin-label { font-size: 13px; color: var(--text2); margin-bottom: 10px; font-weight: 500; }
+  .pin-input {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 8px;
+    color: var(--text);
+    background: var(--bg);
+    margin-bottom: 16px;
+  }
+  .pin-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .login-error { color: var(--danger); font-size: 13px; margin-bottom: 12px; min-height: 18px; }
+
+  /* ── USER BAR ── */
+  .user-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .user-avatar {
+    width: 32px; height: 32px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text3);
+    margin-left: 4px;
+  }
+  .logout-btn:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+
+  /* Hide admin-only items for staff */
+  body.role-staff .nav-btn[data-page="admin"] { display: none; }
+  body.role-staff .nav-btn[data-page="review"] { display: none; }
+
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🏠 House Orders</div>
+    <div class="login-subtitle">Select your name and enter your PIN</div>
+    <div class="employee-grid" id="employee-grid">
+      <div style="color:var(--text3); font-size:13px; grid-column:1/-1; padding:20px;">Loading...</div>
+    </div>
+    <div class="pin-section" id="pin-section" style="display:none">
+      <div class="pin-label" id="pin-label">Enter PIN</div>
+      <input class="pin-input" type="password" maxlength="6" id="pin-input" placeholder="••••" oninput="checkPin()">
+      <div class="login-error" id="login-error"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Login →</button>
+    </div>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header class="header">
   <div class="header-logo">House Orders</div>
   <nav class="header-nav">
-    <button class="nav-btn active" onclick="showPage('stock')">📋 Add Stock</button>
-    <button class="nav-btn" onclick="showPage('review')">🧾 Order Review</button>
-    <button class="nav-btn" onclick="showPage('admin')">⚙️ Admin</button>
+    <button class="nav-btn active" data-page="stock" onclick="showPage('stock')">📋 Add Stock</button>
+    <button class="nav-btn" data-page="review" onclick="showPage('review')">🧾 Order Review</button>
+    <button class="nav-btn" data-page="admin" onclick="showPage('admin')">⚙️ Admin</button>
   </nav>
+  <div class="user-bar">
+    <div class="user-avatar" id="user-avatar">?</div>
+    <span id="user-name-display">—</span>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </div>
 </header>
 
 <!-- ══════════════════════════════════ -->
@@ -482,12 +606,22 @@
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px;">
     <div>
       <div class="page-title">Admin Panel</div>
-      <div class="page-subtitle" style="margin-bottom:0">Διαχείριση προϊόντων</div>
+      <div class="page-subtitle" style="margin-bottom:0">Manage products & employees</div>
     </div>
-    <button class="btn btn-primary" onclick="openProductModal(null)">+ Νέο Προϊόν</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="openEmployeeModal(null)">+ New Employee</button>
+      <button class="btn btn-primary" onclick="openProductModal(null)">+ New Product</button>
+    </div>
   </div>
+
+  <div class="section-label">👥 Employees</div>
+  <div id="employee-admin-list" style="margin-bottom:32px;">
+    <div class="loader"><div class="spinner"></div></div>
+  </div>
+
+  <div class="section-label">📦 Products</div>
   <div id="admin-list">
-    <div class="loader"><div class="spinner"></div>Φόρτωση…</div>
+    <div class="loader"><div class="spinner"></div></div>
   </div>
 </div>
 
@@ -532,6 +666,35 @@
   </div>
 </div>
 
+
+<!-- EMPLOYEE MODAL -->
+<div class="modal-overlay" id="employee-modal">
+  <div class="modal">
+    <div class="modal-title" id="emp-modal-title">New Employee</div>
+    <div class="form-group">
+      <label class="form-label">Full Name *</label>
+      <input class="form-input" id="ef-name" placeholder="e.g. Kostas">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">PIN *</label>
+        <input class="form-input" id="ef-pin" type="password" maxlength="6" placeholder="••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select class="form-select" id="ef-role">
+          <option value="staff">Staff</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEmployeeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -539,6 +702,80 @@
 <div id="pdf-preview"></div>
 
 <script>
+
+// ── LOGIN / AUTH ──
+let currentUser = null;
+let selectedEmployee = null;
+let allEmployees = [];
+
+async function loadEmployees() {
+  const res = await api('employees?active=eq.true&order=name.asc');
+  allEmployees = await res.json();
+  renderEmployeeGrid();
+}
+
+function renderEmployeeGrid() {
+  const grid = document.getElementById('employee-grid');
+  if (!allEmployees.length) { grid.innerHTML = '<div style="color:var(--text3);font-size:13px;grid-column:1/-1;padding:20px;">No employees found</div>'; return; }
+  grid.innerHTML = allEmployees.map(e => `
+    <button class="employee-btn" id="emp-${e.id}" onclick="selectEmployee(${e.id}, '${e.name}', '${e.role}')">
+      ${e.name}
+    </button>`).join('');
+}
+
+function selectEmployee(id, name, role) {
+  selectedEmployee = { id, name, role };
+  document.querySelectorAll('.employee-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('emp-' + id).classList.add('selected');
+  document.getElementById('pin-section').style.display = 'block';
+  document.getElementById('pin-label').textContent = `PIN for ${name}`;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('pin-input').focus();
+}
+
+function checkPin() {
+  document.getElementById('login-error').textContent = '';
+}
+
+function doLogin() {
+  if (!selectedEmployee) { document.getElementById('login-error').textContent = 'Please select your name'; return; }
+  const pin = document.getElementById('pin-input').value;
+  const emp = allEmployees.find(e => e.id === selectedEmployee.id);
+  if (!emp || emp.pin !== pin) {
+    document.getElementById('login-error').textContent = '❌ Wrong PIN, try again';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
+    return;
+  }
+  // Success
+  currentUser = { id: emp.id, name: emp.name, role: emp.role };
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('user-avatar').textContent = emp.name.charAt(0).toUpperCase();
+  document.getElementById('user-name-display').textContent = emp.name;
+
+  // Role-based access
+  document.body.className = 'role-' + emp.role;
+  if (emp.role === 'staff') {
+    showPage('stock', true);
+  }
+}
+
+function doLogout() {
+  currentUser = null;
+  selectedEmployee = null;
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('pin-section').style.display = 'none';
+  document.querySelectorAll('.employee-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('pin-input').value = '';
+  document.body.className = '';
+}
+
+// Enter key on PIN
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement.id === 'pin-input') doLogin();
+});
+
 // ── CONFIG ──
 const SUPABASE_URL = 'https://slkgziugmtisawxeycmv.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsa2d6aXVnbXRpc2F3eGV5Y212Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDUxNTUsImV4cCI6MjA4ODI4MTE1NX0.LVfCr7iF4ypR5vDsUzCZ32iKfbk0CVVS6fKWDBCH62k';
@@ -571,6 +808,7 @@ function switchCategory(cat) {
 
 // ── INIT ──
 loadProducts();
+loadEmployees();
 
 async function loadProducts() {
   const res = await api('products?order=sort_order.asc,id.asc&active=eq.true');
@@ -580,11 +818,17 @@ async function loadProducts() {
 }
 
 // ── NAV ──
-function showPage(name) {
+function showPage(name, silent = false) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  event.target.classList.add('active');
+  if (name === 'admin') renderEmployeeAdmin();
+  if (!silent) {
+    const btn = document.querySelector(`.nav-btn[data-page="${name}"]`);
+    if (btn) btn.classList.add('active');
+  } else {
+    document.querySelector('.nav-btn[data-page="' + name + '"]')?.classList.add('active');
+  }
 }
 
 // ── STOCK LIST ──
@@ -612,7 +856,7 @@ function renderStockList() {
         <div class="qty-inputs">
           <div class="qty-group">
             <span class="qty-label">Pieces</span>
-            <input class="qty-input" type="number" min="0" id="tmx-${p.id}" value="0">
+            <input class="qty-input" type="number" min="0" step="0.5" id="tmx-${p.id}" value="0">
           </div>
           <div class="qty-group">
             <span class="qty-label">Box</span>
@@ -897,6 +1141,7 @@ async function saveProduct() {
   }
   closeProductModal();
   await loadProducts();
+loadEmployees();
 }
 
 async function deleteProduct(id) {
@@ -904,7 +1149,89 @@ async function deleteProduct(id) {
   await api(`products?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
   toast('Διαγράφηκε');
   await loadProducts();
+loadEmployees();
 }
+
+
+// ── EMPLOYEE ADMIN ──
+let editingEmpId = null;
+
+async function renderEmployeeAdmin() {
+  const res = await api('employees?order=name.asc');
+  const emps = await res.json();
+  const el = document.getElementById('employee-admin-list');
+  if (!emps.length) { el.innerHTML = '<div class="empty">No employees</div>'; return; }
+  el.innerHTML = emps.map(e => `
+    <div class="admin-product-row">
+      <div class="product-img-placeholder" style="font-size:16px;font-weight:700;color:var(--accent)">
+        ${e.name.charAt(0).toUpperCase()}
+      </div>
+      <div>
+        <div class="admin-product-info">${e.name}</div>
+        <div class="admin-product-meta">${e.role} · ${e.active ? 'Active' : 'Inactive'}</div>
+      </div>
+      <div class="admin-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openEmployeeModal(${e.id})">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEmployee(${e.id})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function openEmployeeModal(id) {
+  editingEmpId = id;
+  if (id) {
+    const e = allEmployees.find(x => x.id === id) || {};
+    document.getElementById('emp-modal-title').textContent = 'Edit Employee';
+    document.getElementById('ef-name').value = e.name || '';
+    document.getElementById('ef-pin').value = '';
+    document.getElementById('ef-role').value = e.role || 'staff';
+  } else {
+    document.getElementById('emp-modal-title').textContent = 'New Employee';
+    document.getElementById('ef-name').value = '';
+    document.getElementById('ef-pin').value = '';
+    document.getElementById('ef-role').value = 'staff';
+  }
+  document.getElementById('employee-modal').classList.add('open');
+}
+
+function closeEmployeeModal() {
+  document.getElementById('employee-modal').classList.remove('open');
+  editingEmpId = null;
+}
+
+async function saveEmployee() {
+  const name = document.getElementById('ef-name').value.trim();
+  const pin = document.getElementById('ef-pin').value.trim();
+  const role = document.getElementById('ef-role').value;
+  if (!name) { toast('Enter a name', true); return; }
+  if (!editingEmpId && !pin) { toast('Enter a PIN', true); return; }
+
+  const data = { name, role };
+  if (pin) data.pin = pin;
+
+  if (editingEmpId) {
+    await api(`employees?id=eq.${editingEmpId}`, { method: 'PATCH', body: JSON.stringify(data) });
+    toast('✓ Updated!');
+  } else {
+    await api('employees', { method: 'POST', body: JSON.stringify(data) });
+    toast('✓ Employee added!');
+  }
+  closeEmployeeModal();
+  await loadEmployees();
+  renderEmployeeAdmin();
+}
+
+async function deleteEmployee(id) {
+  if (!confirm('Delete this employee?')) return;
+  await api(`employees?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  toast('Deleted');
+  await loadEmployees();
+  renderEmployeeAdmin();
+}
+
+document.getElementById('employee-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeEmployeeModal();
+});
 
 // ── TOAST ──
 function toast(msg, isError = false) {
