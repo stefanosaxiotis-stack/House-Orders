@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Orders – Stock Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --accent: #2d6a4f;
+    --accent2: #52b788;
+    --accent-light: #d8f3dc;
+    --danger: #e63946;
+    --danger-light: #fde8ea;
+    --warn: #f4a261;
+    --warn-light: #fef0e4;
+    --text: #1a1a1a;
+    --text2: #555550;
+    --text3: #9a9a90;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  .header-logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .header-logo span { color: var(--text3); font-weight: 400; }
+  .header-nav { display: flex; gap: 8px; }
+  .nav-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .nav-btn.active { background: var(--accent); color: #fff; }
+  .nav-btn:not(.active) { background: transparent; color: var(--text2); }
+  .nav-btn:not(.active):hover { background: var(--surface2); }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 32px 24px; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── PAGE TITLES ── */
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .page-subtitle { font-size: 14px; color: var(--text3); margin-bottom: 28px; }
+
+  /* ── STOCK FORM ── */
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+    transition: box-shadow 0.15s;
+  }
+  .product-card:hover { box-shadow: var(--shadow); }
+  .product-img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .product-img-placeholder {
+    width: 52px; height: 52px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .product-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .product-unit-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 4px;
+  }
+  .qty-inputs { display: flex; gap: 8px; align-items: center; }
+  .qty-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .qty-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .qty-input {
+    width: 72px;
+    padding: 8px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text);
+    background: var(--bg);
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .qty-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #235c43; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(45,106,79,0.3); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-danger { background: var(--danger-light); color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  .action-bar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── ORDER REVIEW ── */
+  .review-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .review-table th {
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .review-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .review-table tr:last-child td { border-bottom: none; }
+  .review-table tr:hover td { background: var(--surface2); }
+  .review-table .qty-cell {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .review-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    background: var(--bg);
+    -moz-appearance: textfield;
+  }
+  .review-input::-webkit-outer-spin-button,
+  .review-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .review-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .zero-row td { color: var(--text3); }
+  .tag-zero { background: var(--surface2); color: var(--text3); padding: 2px 8px; border-radius: 20px; font-size: 11px; }
+  .tag-order { background: var(--accent-light); color: var(--accent); padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  .manual-row td { background: var(--warn-light); }
+  .add-manual-btn {
+    margin-top: 12px;
+    background: var(--warn-light);
+    color: var(--warn);
+    border: 1.5px dashed var(--warn);
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    width: 100%;
+    transition: all 0.15s;
+  }
+  .add-manual-btn:hover { background: var(--warn); color: #fff; }
+
+  .delete-row-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  .delete-row-btn:hover { color: var(--danger); background: var(--danger-light); }
+
+  /* ── ADMIN PANEL ── */
+  .admin-product-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .admin-product-info { font-size: 14px; font-weight: 600; }
+  .admin-product-meta { font-size: 12px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .admin-actions { display: flex; gap: 6px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 480px;
+    max-width: 95vw;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+  .form-input, .form-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--accent);
+    color: #fff;
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--danger); }
+
+  /* LOADING */
+  .loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    color: var(--text3);
+    flex-direction: column;
+    gap: 12px;
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 40px; color: var(--text3); font-size: 14px; }
+
+  /* PDF hidden styles */
+  @media print {
+    body * { visibility: hidden; }
+    #pdf-preview, #pdf-preview * { visibility: visible; }
+    #pdf-preview { position: absolute; left: 0; top: 0; width: 100%; }
+  }
+
+  /* PDF PREVIEW */
+  #pdf-preview {
+    display: none;
+    padding: 40px;
+    background: #fff;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .pdf-header { margin-bottom: 24px; border-bottom: 2px solid #000; padding-bottom: 12px; }
+  .pdf-title { font-size: 22px; font-weight: 700; }
+  .pdf-date { font-size: 13px; color: #666; margin-top: 4px; }
+  .pdf-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  .pdf-table th { background: #2d6a4f; color: #fff; padding: 10px 14px; text-align: left; font-size: 13px; }
+  .pdf-table td { padding: 9px 14px; border-bottom: 1px solid #ddd; font-size: 13px; }
+  .pdf-table tr:nth-child(even) td { background: #f9f9f7; }
+
+  /* SUMMARY BADGE */
+  .summary-bar {
+    background: var(--accent-light);
+    border: 1px solid var(--accent2);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    margin: 24px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  @media (max-width: 600px) {
+    .product-card { grid-template-columns: 48px 1fr; }
+    .qty-inputs { grid-column: 1/-1; justify-content: flex-start; }
+    .qty-input { width: 64px; }
+    .page { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">House Orders <span>/ Stock Manager</span></div>
+  <nav class="header-nav">
+    <button class="nav-btn active" onclick="showPage('stock')">📋 Καταχώρηση</button>
+    <button class="nav-btn" onclick="showPage('review')">🧾 Παραγγελία</button>
+    <button class="nav-btn" onclick="showPage('admin')">⚙️ Admin</button>
+  </nav>
+</header>
+
+<!-- ══════════════════════════════════ -->
+<!--  PAGE 1: STOCK ENTRY              -->
+<!-- ══════════════════════════════════ -->
+<div class="page active" id="page-stock">
+  <div class="page-title">Καταχώρηση Stock</div>
+  <div class="page-subtitle">Συμπλήρωσε το τρέχον απόθεμα για κάθε προϊόν</div>
+
+  <div id="stock-list">
+    <div class="loader"><div class="spinner"></div>Φόρτωση προϊόντων…</div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="submitStock()">✓ Υποβολή &amp; Υπολογισμός Παραγγελίας</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--  PAGE 2: ORDER REVIEW             -->
+<!-- ══════════════════════════════════ -->
+<div class="page" id="page-review">
+  <div class="page-title">Επεξεργασία Παραγγελίας</div>
+  <div class="page-subtitle">Έλεγξε και τροποποίησε τις ποσότητες πριν την εξαγωγή</div>
+
+  <div id="review-content">
+    <div class="empty">⬅️ Πρώτα συμπλήρωσε το stock από την καρτέλα Καταχώρηση</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--  PAGE 3: ADMIN                    -->
+<!-- ══════════════════════════════════ -->
+<div class="page" id="page-admin">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px;">
+    <div>
+      <div class="page-title">Admin Panel</div>
+      <div class="page-subtitle" style="margin-bottom:0">Διαχείριση προϊόντων</div>
+    </div>
+    <button class="btn btn-primary" onclick="openProductModal(null)">+ Νέο Προϊόν</button>
+  </div>
+  <div id="admin-list">
+    <div class="loader"><div class="spinner"></div>Φόρτωση…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--  PRODUCT MODAL                    -->
+<!-- ══════════════════════════════════ -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Νέο Προϊόν</div>
+    <div class="form-group">
+      <label class="form-label">Όνομα Προϊόντος *</label>
+      <input class="form-input" id="f-name" placeholder="π.χ. Gourmet Tartar Salmon">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Κατηγορία</label>
+        <select class="form-select" id="f-category">
+          <option value="pet_city">🐾 Pet City</option>
+          <option value="supermarket">🛒 Supermarket</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Μονάδα Υπολογισμού</label>
+        <select class="form-select" id="f-unit">
+          <option value="τεμάχιο">Τεμάχιο</option>
+          <option value="κιβώτιο">Κιβώτιο</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ελάχιστο Απόθεμα</label>
+      <input class="form-input" id="f-min" type="number" min="0" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">URL Φωτογραφίας</label>
+      <input class="form-input" id="f-img" placeholder="https://...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeProductModal()">Άκυρο</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- PDF PREVIEW (hidden, for print) -->
+<div id="pdf-preview"></div>
+
+<script>
+// ── CONFIG ──
+const SUPABASE_URL = 'https://slkgziugmtisawxeycmv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsa2d6aXVnbXRpc2F3eGV5Y212Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MDUxNTUsImV4cCI6MjA4ODI4MTE1NX0.LVfCr7iF4ypR5vDsUzCZ32iKfbk0CVVS6fKWDBCH62k';
+
+const api = (path, opts = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  headers: {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': opts.prefer || 'return=representation',
+    ...opts.headers
+  },
+  ...opts
+});
+
+// ── STATE ──
+let products = [];
+let editingId = null;
+let orderData = []; // [{product, order_qty, unit}]
+
+// ── INIT ──
+loadProducts();
+
+async function loadProducts() {
+  const res = await api('products?order=sort_order.asc,id.asc&active=eq.true');
+  products = await res.json();
+  renderStockList();
+  renderAdminList();
+}
+
+// ── NAV ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── STOCK LIST ──
+function renderStockList() {
+  const el = document.getElementById('stock-list');
+  if (!products.length) { el.innerHTML = '<div class="empty">Δεν βρέθηκαν προϊόντα</div>'; return; }
+
+  const categories = [
+    { key: 'pet_city', label: '🐾 Pet City' },
+    { key: 'supermarket', label: '🛒 Supermarket' }
+  ];
+
+  let html = '';
+  categories.forEach(cat => {
+    const items = products.filter(p => p.category === cat.key);
+    if (!items.length) return;
+    html += `<div class="section-label">${cat.label}</div>`;
+    items.forEach(p => {
+      const imgEl = p.image_url
+        ? `<img class="product-img" src="${p.image_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
+        : '';
+      html += `
+        <div class="product-card">
+          ${imgEl}
+          <div class="product-img-placeholder" style="${p.image_url ? 'display:none' : ''}">📦</div>
+          <div>
+            <div class="product-name">${p.name}</div>
+            <div class="product-unit-badge">Υπολ: ${p.unit} · Min: ${p.min_stock}</div>
+          </div>
+          <div class="qty-inputs">
+            <div class="qty-group">
+              <span class="qty-label">Τεμάχια</span>
+              <input class="qty-input" type="number" min="0" id="tmx-${p.id}" value="0">
+            </div>
+            <div class="qty-group">
+              <span class="qty-label">Κιβώτια</span>
+              <input class="qty-input" type="number" min="0" id="kiv-${p.id}" value="0">
+            </div>
+          </div>
+        </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+// ── SUBMIT STOCK ──
+async function submitStock() {
+  // Calculate orders
+  orderData = [];
+  products.forEach(p => {
+    const tmx = parseInt(document.getElementById('tmx-' + p.id)?.value) || 0;
+    const kiv = parseInt(document.getElementById('kiv-' + p.id)?.value) || 0;
+    const current = p.unit === 'κιβώτιο' ? kiv : tmx;
+    const needed = Math.max(0, p.min_stock - current);
+    orderData.push({ product: p, qty_pieces: tmx, qty_boxes: kiv, order_qty: needed });
+  });
+
+  // Save to DB
+  try {
+    const entryRes = await api('stock_entries', {
+      method: 'POST',
+      body: JSON.stringify({ submitted_by: 'υπάλληλος' })
+    });
+    const [entry] = await entryRes.json();
+
+    const items = orderData.map(d => ({
+      entry_id: entry.id,
+      product_id: d.product.id,
+      qty_pieces: d.qty_pieces,
+      qty_boxes: d.qty_boxes,
+      order_qty: d.order_qty
+    }));
+    await api('stock_entry_items', { method: 'POST', body: JSON.stringify(items) });
+    toast('✓ Το stock καταχωρήθηκε!');
+  } catch(e) {
+    toast('⚠ Αποθήκευση απέτυχε – τα δεδομένα εμφανίζονται κανονικά', true);
+  }
+
+  renderReview();
+
+  // Switch to review page
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-review').classList.add('active');
+  document.querySelectorAll('.nav-btn')[1].classList.add('active');
+}
+
+// ── REVIEW ──
+function renderReview() {
+  const el = document.getElementById('review-content');
+
+  const categories = [
+    { key: 'pet_city', label: '🐾 Pet City' },
+    { key: 'supermarket', label: '🛒 Supermarket' }
+  ];
+
+  const orderCount = orderData.filter(d => d.order_qty > 0).length;
+  let html = `
+    <div class="summary-bar">
+      📦 <strong>${orderCount}</strong> είδη χρειάζονται παραγγελία
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="exportPDF('pet_city')">📄 PDF Pet City</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportPDF('supermarket')">📄 PDF Supermarket</button>
+      </div>
+    </div>`;
+
+  categories.forEach(cat => {
+    const items = orderData.filter(d => d.product.category === cat.key);
+    if (!items.length) return;
+
+    html += `<div class="section-label">${cat.label}</div>
+    <table class="review-table">
+      <thead><tr>
+        <th>Προϊόν</th>
+        <th>Stock (Τεμ/Κιβ)</th>
+        <th>Μονάδα</th>
+        <th>Min</th>
+        <th>Παραγγελία</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="tbody-${cat.key}">`;
+
+    items.forEach((d, i) => {
+      const hasOrder = d.order_qty > 0;
+      html += `
+        <tr class="${hasOrder ? '' : 'zero-row'}" id="row-${cat.key}-${i}">
+          <td>${d.product.name}</td>
+          <td class="qty-cell">${d.qty_pieces} / ${d.qty_boxes}</td>
+          <td>${d.product.unit}</td>
+          <td class="qty-cell">${d.product.min_stock}</td>
+          <td>
+            ${hasOrder
+              ? `<input class="review-input" type="number" min="0" value="${d.order_qty}" onchange="updateOrderQty('${cat.key}',${i},this.value)">`
+              : `<span class="tag-zero">Επαρκές</span>`}
+          </td>
+          <td><button class="delete-row-btn" onclick="deleteReviewRow('${cat.key}',${i})" title="Αφαίρεση">✕</button></td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>
+    <button class="add-manual-btn" onclick="addManualRow('${cat.key}')">+ Προσθήκη χειροκίνητης γραμμής</button>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function updateOrderQty(cat, i, val) {
+  const items = orderData.filter(d => d.product.category === cat);
+  if (items[i]) items[i].order_qty = parseInt(val) || 0;
+}
+
+function deleteReviewRow(cat, i) {
+  const row = document.getElementById(`row-${cat}-${i}`);
+  if (row) row.remove();
+  const items = orderData.filter(d => d.product.category === cat);
+  if (items[i]) items[i]._deleted = true;
+}
+
+let manualCounter = 0;
+function addManualRow(cat) {
+  const tbody = document.getElementById('tbody-' + cat);
+  const id = 'manual-' + manualCounter++;
+  const tr = document.createElement('tr');
+  tr.className = 'manual-row';
+  tr.id = id;
+  tr.innerHTML = `
+    <td><input class="review-input" style="width:100%" placeholder="Όνομα είδους" id="${id}-name"></td>
+    <td>—</td>
+    <td><select class="review-input" id="${id}-unit" style="width:100%">
+      <option value="τεμάχιο">Τεμ.</option>
+      <option value="κιβώτιο">Κιβ.</option>
+    </select></td>
+    <td>—</td>
+    <td><input class="review-input" type="number" min="0" value="1" id="${id}-qty"></td>
+    <td><button class="delete-row-btn" onclick="document.getElementById('${id}').remove()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+// ── EXPORT PDF ──
+function exportPDF(category) {
+  const catLabel = category === 'pet_city' ? 'Pet City' : 'Supermarket';
+  const now = new Date().toLocaleDateString('el-GR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  // Collect rows from table
+  const tbody = document.getElementById('tbody-' + category);
+  if (!tbody) { toast('Δεν υπάρχουν δεδομένα για αυτή την κατηγορία', true); return; }
+
+  const rows = Array.from(tbody.querySelectorAll('tr')).map(tr => {
+    const cells = tr.querySelectorAll('td');
+    const nameInput = tr.querySelector('input[placeholder="Όνομα είδους"]');
+    const qtyInput = tr.querySelector('input[type="number"]');
+    const unitSelect = tr.querySelector('select');
+    if (nameInput) {
+      // Manual row
+      return {
+        name: nameInput.value || '—',
+        unit: unitSelect ? unitSelect.value : '—',
+        qty: qtyInput ? qtyInput.value : '—'
+      };
+    }
+    // Normal row
+    const name = cells[0]?.textContent?.trim();
+    const unit = cells[2]?.textContent?.trim();
+    const qtyEl = cells[4]?.querySelector('input');
+    const qty = qtyEl ? qtyEl.value : cells[4]?.textContent?.trim();
+    if (!name || qty === 'Επαρκές') return null;
+    return { name, unit, qty };
+  }).filter(r => r && r.name && r.name !== '—' && r.qty && r.qty !== 'Επαρκές');
+
+  const tableRows = rows.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td style="text-align:center">${r.qty}</td>
+      <td>${r.unit}</td>
+    </tr>`).join('');
+
+  const preview = document.getElementById('pdf-preview');
+  preview.innerHTML = `
+    <div class="pdf-header">
+      <div class="pdf-title">Παραγγελία – ${catLabel}</div>
+      <div class="pdf-date">Ημερομηνία: ${now}</div>
+    </div>
+    <table class="pdf-table">
+      <thead><tr>
+        <th>Προϊόν</th>
+        <th style="width:100px;text-align:center">Ποσότητα</th>
+        <th style="width:100px">Μονάδα</th>
+      </tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>`;
+
+  preview.style.display = 'block';
+  window.print();
+  preview.style.display = 'none';
+}
+
+// ── ADMIN ──
+function renderAdminList() {
+  const el = document.getElementById('admin-list');
+  if (!products.length) { el.innerHTML = '<div class="empty">Δεν βρέθηκαν προϊόντα</div>'; return; }
+
+  const categories = [
+    { key: 'pet_city', label: '🐾 Pet City' },
+    { key: 'supermarket', label: '🛒 Supermarket' }
+  ];
+
+  let html = '';
+  categories.forEach(cat => {
+    const items = products.filter(p => p.category === cat.key);
+    if (!items.length) return;
+    html += `<div class="section-label">${cat.label} (${items.length} είδη)</div>`;
+    items.forEach(p => {
+      html += `
+        <div class="admin-product-row">
+          ${p.image_url
+            ? `<img class="product-img" src="${p.image_url}" onerror="this.style.opacity=0.2" alt="">`
+            : `<div class="product-img-placeholder">📦</div>`}
+          <div>
+            <div class="admin-product-info">${p.name}</div>
+            <div class="admin-product-meta">Min: ${p.min_stock} ${p.unit}</div>
+          </div>
+          <div class="admin-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openProductModal(${p.id})">✏️ Επεξεργασία</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑</button>
+          </div>
+        </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function openProductModal(id) {
+  editingId = id;
+  const modal = document.getElementById('product-modal');
+  if (id) {
+    const p = products.find(x => x.id === id);
+    document.getElementById('modal-title').textContent = 'Επεξεργασία Προϊόντος';
+    document.getElementById('f-name').value = p.name;
+    document.getElementById('f-category').value = p.category;
+    document.getElementById('f-unit').value = p.unit;
+    document.getElementById('f-min').value = p.min_stock;
+    document.getElementById('f-img').value = p.image_url || '';
+  } else {
+    document.getElementById('modal-title').textContent = 'Νέο Προϊόν';
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-category').value = 'pet_city';
+    document.getElementById('f-unit').value = 'τεμάχιο';
+    document.getElementById('f-min').value = '0';
+    document.getElementById('f-img').value = '';
+  }
+  modal.classList.add('open');
+}
+
+function closeProductModal() {
+  document.getElementById('product-modal').classList.remove('open');
+  editingId = null;
+}
+
+async function saveProduct() {
+  const data = {
+    name: document.getElementById('f-name').value.trim(),
+    category: document.getElementById('f-category').value,
+    unit: document.getElementById('f-unit').value,
+    min_stock: parseInt(document.getElementById('f-min').value) || 0,
+    image_url: document.getElementById('f-img').value.trim() || null,
+  };
+  if (!data.name) { toast('Βάλε όνομα προϊόντος', true); return; }
+
+  if (editingId) {
+    await api(`products?id=eq.${editingId}`, { method: 'PATCH', body: JSON.stringify(data) });
+    toast('✓ Ενημερώθηκε!');
+  } else {
+    const maxOrder = products.length ? Math.max(...products.map(p => p.sort_order || 0)) + 1 : 1;
+    await api('products', { method: 'POST', body: JSON.stringify({ ...data, sort_order: maxOrder }) });
+    toast('✓ Προστέθηκε!');
+  }
+  closeProductModal();
+  await loadProducts();
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Σίγουρα να διαγραφεί το προϊόν;')) return;
+  await api(`products?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  toast('Διαγράφηκε');
+  await loadProducts();
+}
+
+// ── TOAST ──
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Close modal on overlay click
+document.getElementById('product-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeProductModal();
+});
+</script>
+</body>
+</html>
