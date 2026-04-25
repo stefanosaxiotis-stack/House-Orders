@@ -873,10 +873,10 @@ async function submitStock() {
   // Calculate orders
   orderData = [];
   products.forEach(p => {
-    const tmx = parseInt(document.getElementById('tmx-' + p.id)?.value) || 0;
+    const tmx = parseFloat(document.getElementById('tmx-' + p.id)?.value) || 0;
     const kiv = parseInt(document.getElementById('kiv-' + p.id)?.value) || 0;
     const current = p.unit === 'κιβώτιο' ? kiv : tmx;
-    const needed = Math.max(0, p.min_stock - current);
+    const needed = Math.max(0, Math.ceil(p.min_stock - current));
     orderData.push({ product: p, qty_pieces: tmx, qty_boxes: kiv, order_qty: needed });
   });
 
@@ -950,7 +950,7 @@ function renderReview() {
       html += `
         <tr class="${hasOrder ? '' : 'zero-row'}" id="row-${cat.key}-${i}">
           <td>${d.product.name}</td>
-          <td class="qty-cell">${d.qty_pieces} / ${d.qty_boxes}</td>
+          <td class="qty-cell">${d.qty_pieces % 1 !== 0 ? d.qty_pieces.toFixed(1) : d.qty_pieces} / ${d.qty_boxes}</td>
           <td>${d.product.unit}</td>
           <td class="qty-cell">${d.product.min_stock}</td>
           <td>
