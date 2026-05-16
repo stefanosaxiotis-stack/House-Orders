@@ -134,14 +134,24 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 14px 16px;
-    display: grid;
-    grid-template-columns: 56px 1fr auto;
-    align-items: center;
-    gap: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     margin-bottom: 8px;
     transition: box-shadow 0.15s;
   }
   .product-card:hover { box-shadow: var(--shadow); }
+  .product-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .product-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
   .product-img {
     width: 52px;
     height: 52px;
@@ -443,12 +453,7 @@
     border-bottom: 1px solid var(--border);
   }
 
-  @media (max-width: 600px) {
-    .product-card { grid-template-columns: 48px 1fr; }
-    .qty-inputs { grid-column: 1/-1; justify-content: flex-start; }
-    .qty-input { width: 64px; }
-    .page { padding: 20px 16px; }
-  }
+  .page { padding: 16px; max-width: 100%; }
 
   /* ── LOGIN SCREEN ── */
   .login-screen {
@@ -591,8 +596,8 @@
   .not-used-card .product-name { color: var(--text3); }
 
   /* Checkbox toggle */
-  .toggle-wrap { display: flex; align-items: center; gap: 10px; flex-direction: column; }
-  .toggle-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); }
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; flex-direction: row; }
+  .toggle-label { font-size: 11px; font-weight: 600; color: var(--text3); }
 
   /* SOS badge */
   .sos-active { border-color: var(--danger) !important; background: var(--danger-light) !important; }
@@ -1091,13 +1096,15 @@ function renderStockList() {
       : '';
     html += `
       <div class="product-card" id="card-${p.id}">
-        ${imgEl}
-        <div class="product-img-placeholder" style="${p.image_url ? 'display:none' : ''}">📦</div>
-        <div style="flex:1">
-          <div class="product-name">${p.name}</div>
-          <div class="product-unit-badge">Count as: ${isBox ? 'Box' : 'Pieces'}</div>
+        <div class="product-card-top">
+          ${imgEl}
+          <div class="product-img-placeholder" style="${p.image_url ? 'display:none' : ''}">📦</div>
+          <div style="flex:1;min-width:0">
+            <div class="product-name">${p.name}</div>
+            <div class="product-unit-badge">Count as: ${isBox ? 'Box' : 'Pieces'}</div>
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+        <div class="product-card-bottom">
           <div class="qty-inputs">
             <div class="qty-group">
               <span class="qty-label ${!isBox ? 'primary-unit' : ''}">Pieces</span>
@@ -1108,19 +1115,19 @@ function renderStockList() {
               <input class="qty-input ${isBox ? 'primary-unit' : ''}" type="number" min="0" id="kiv-${p.id}" value="0">
             </div>
           </div>
-          <div style="display:flex;gap:12px;align-items:center;">
+          <div style="display:flex;gap:16px;align-items:center;">
             <div class="toggle-wrap">
               <span class="toggle-label">Not Used</span>
-              <label style="position:relative;display:inline-block;width:36px;height:20px;">
+              <label style="position:relative;display:inline-block;width:40px;height:22px;">
                 <input type="checkbox" id="nu-${p.id}" onchange="toggleNotUsedProduct(${p.id}, this.checked)" style="opacity:0;width:0;height:0;">
-                <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s;" id="nu-span-${p.id}"></span>
+                <span style="position:absolute;cursor:pointer;inset:0;background:#ddd;border-radius:20px;transition:.3s;" id="nu-span-${p.id}"></span>
               </label>
             </div>
             <div class="toggle-wrap">
               <span class="toggle-label" style="color:var(--danger)">⚡ SOS</span>
-              <label style="position:relative;display:inline-block;width:36px;height:20px;">
+              <label style="position:relative;display:inline-block;width:40px;height:22px;">
                 <input type="checkbox" id="sos-${p.id}" style="opacity:0;width:0;height:0;" onchange="toggleSOS(${p.id}, this.checked)">
-                <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s;" id="sos-span-${p.id}"></span>
+                <span style="position:absolute;cursor:pointer;inset:0;background:#ddd;border-radius:20px;transition:.3s;" id="sos-span-${p.id}"></span>
               </label>
             </div>
           </div>
