@@ -68,18 +68,18 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    background: var(--surface);
   }
   .header-nav::-webkit-scrollbar { display: none; }
   .nav-btn {
-    flex: 1;
-    min-width: 0;
-    padding: 10px 8px;
+    flex-shrink: 0;
+    padding: 11px 18px;
     border: none;
     border-bottom: 3px solid transparent;
     background: transparent;
     color: var(--text3);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s;
@@ -453,7 +453,8 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .page { padding: 16px; max-width: 100%; }
+  .page { display: none; padding: 16px; max-width: 100%; }
+  .page.active { display: block; }
 
   /* ── LOGIN SCREEN ── */
   .login-screen {
