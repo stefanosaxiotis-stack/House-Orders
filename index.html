@@ -565,6 +565,66 @@
   .submission-date { font-size: 13px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
   .submission-arrow { font-size: 18px; color: var(--text3); }
 
+
+  /* ── NOT USED / SOS ── */
+  .not-used-card {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+  .not-used-card .product-name { color: var(--text3); }
+
+  /* Checkbox toggle */
+  .toggle-wrap { display: flex; align-items: center; gap: 10px; flex-direction: column; }
+  .toggle-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); }
+
+  /* SOS badge */
+  .sos-active { border-color: var(--danger) !important; background: var(--danger-light) !important; }
+  .sos-badge { 
+    display: inline-block; background: var(--danger); color: #fff;
+    font-size: 10px; font-weight: 800; padding: 2px 7px;
+    border-radius: 20px; letter-spacing: 1px; margin-left: 6px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+
+  /* Active input highlight */
+  .qty-input.primary-unit {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 700;
+    box-shadow: 0 0 0 3px rgba(82,183,136,0.2);
+  }
+  .qty-label.primary-unit { color: var(--accent); font-weight: 800; }
+
+  /* Subcat filter buttons */
+  .subcat-filter-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .subcat-filter-btn:hover { border-color: var(--accent2); color: var(--accent); }
+  .subcat-filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* SOS row in review */
+  .sos-row td { background: #fff0f1 !important; }
+  .sos-row td:first-child { border-left: 3px solid var(--danger); }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -594,6 +654,7 @@
     <button class="nav-btn active" data-page="stock" onclick="showPage('stock')">📋 Add Stock</button>
     <button class="nav-btn" data-page="review" onclick="showPage('review')">🧾 Order Review</button>
     <button class="nav-btn" data-page="admin" onclick="showPage('admin')">⚙️ Admin</button>
+    <button class="nav-btn" data-page="subcats" onclick="showPage('subcats')" style="display:none" id="nav-subcats">🏷️ Categories</button>
   </nav>
   <div class="user-bar">
     <div class="user-avatar" id="user-avatar">?</div>
@@ -614,11 +675,24 @@
     <button class="cat-btn" id="cat-btn-supermarket" onclick="switchCategory('supermarket')">🛒 Supermarket</button>
   </div>
 
+  <div id="subcat-bar" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:20px;"></div>
+
   <div id="stock-list">
     <div class="loader"><div class="spinner"></div>Loading products…</div>
   </div>
 
+  <div id="staff-manual-section" style="margin-top:16px;">
+    <button class="add-manual-btn" onclick="addStaffManualRow()">+ Add extra item</button>
+    <div id="staff-manual-rows"></div>
+  </div>
+
+  <div id="not-used-section" style="display:none">
+    <div class="section-label" style="color:var(--text3)">⛔ Not Used Products</div>
+    <div id="not-used-list"></div>
+  </div>
+
   <div class="action-bar">
+    <button class="btn btn-secondary" onclick="toggleNotUsed()" id="not-used-toggle-btn">⛔ Not Used</button>
     <button class="btn btn-primary" onclick="submitStock()">✓ Submit &amp; Calculate Order</button>
   </div>
 </div>
@@ -672,7 +746,13 @@
     <div class="loader"><div class="spinner"></div></div>
   </div>
 
-  <div class="section-label">📦 Products</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px;">
+    <div class="section-label" style="margin:0;border:none">📦 Products</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary btn-sm" id="admin-show-active-btn" onclick="setAdminProductView('active')" style="background:var(--accent);color:#fff">Active</button>
+      <button class="btn btn-secondary btn-sm" id="admin-show-notused-btn" onclick="setAdminProductView('notused')">Not Used</button>
+    </div>
+  </div>
   <div id="admin-list">
     <div class="loader"><div class="spinner"></div></div>
   </div>
@@ -707,6 +787,12 @@
     <div class="form-group">
       <label class="form-label">Ελάχιστο Απόθεμα</label>
       <input class="form-input" id="f-min" type="number" min="0" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Subcategory (Pet City)</label>
+      <select class="form-select" id="f-subcat">
+        <option value="">— None —</option>
+      </select>
     </div>
     <div class="form-group">
       <label class="form-label">URL Φωτογραφίας</label>
@@ -744,6 +830,38 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeEmployeeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveEmployee()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════ -->
+<!--  PAGE 4: SUBCATEGORIES            -->
+<!-- ══════════════════════════════════ -->
+<div class="page" id="page-subcats">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;">
+    <div>
+      <div class="page-title">🏷️ Categories</div>
+      <div class="page-subtitle" style="margin-bottom:0">Manage Pet City subcategories</div>
+    </div>
+    <button class="btn btn-primary" onclick="openSubcatModal(null)">+ New Category</button>
+  </div>
+  <div id="subcats-list">
+    <div class="loader"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- SUBCAT MODAL -->
+<div class="modal-overlay" id="subcat-modal">
+  <div class="modal">
+    <div class="modal-title" id="subcat-modal-title">New Category</div>
+    <div class="form-group">
+      <label class="form-label">Category Name *</label>
+      <input class="form-input" id="sc-name" placeholder="e.g. Cat Food">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSubcatModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSubcat()">Save</button>
     </div>
   </div>
 </div>
@@ -809,6 +927,9 @@ function doLogin() {
 
   // Role-based access
   document.body.className = 'role-' + emp.role;
+  if (emp.role === 'admin') {
+    document.getElementById('nav-subcats').style.display = '';
+  }
   if (emp.role === 'staff') {
     showPage('stock', true);
   }
@@ -862,9 +983,10 @@ function switchCategory(cat) {
 // ── INIT ──
 loadProducts();
 loadEmployees();
+loadSubcats();
 
 async function loadProducts() {
-  const res = await api('products?order=sort_order.asc,id.asc&active=eq.true');
+  const res = await api('products?order=sort_order.asc,id.asc&active=eq.true&not_used=eq.false');
   products = await res.json();
   renderStockList();
   renderAdminList();
@@ -875,7 +997,8 @@ function showPage(name, silent = false) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  if (name === 'admin') renderEmployeeAdmin();
+  if (name === 'admin') { renderEmployeeAdmin(); renderAdminList(); }
+  if (name === 'subcats') loadSubcats();
   if (name === 'review') { document.getElementById('review-list-view').style.display='block'; document.getElementById('review-detail-view').style.display='none'; loadSubmissions(); }
   if (!silent) {
     const btn = document.querySelector(`.nav-btn[data-page="${name}"]`);
@@ -886,40 +1009,133 @@ function showPage(name, silent = false) {
 }
 
 // ── STOCK LIST ──
+let activeSubcat = null;
+let showingNotUsed = false;
+
+function renderSubcatBar() {
+  const bar = document.getElementById('subcat-bar');
+  if (activeCategory !== 'pet_city') { bar.style.display = 'none'; return; }
+  const subcats = [...new Set(products.filter(p => p.category === 'pet_city' && p.subcategory).map(p => p.subcategory))];
+  if (!subcats.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = `<button class="subcat-filter-btn ${activeSubcat === null ? 'active' : ''}" onclick="setSubcat(null)">All</button>` +
+    subcats.map(s => `<button class="subcat-filter-btn ${activeSubcat === s ? 'active' : ''}" onclick="setSubcat('${s}')">${s}</button>`).join('');
+}
+
+function setSubcat(s) {
+  activeSubcat = s;
+  renderSubcatBar();
+  renderStockList();
+}
+
+function toggleNotUsed() {
+  showingNotUsed = !showingNotUsed;
+  document.getElementById('not-used-section').style.display = showingNotUsed ? 'block' : 'none';
+  document.getElementById('not-used-toggle-btn').style.background = showingNotUsed ? 'var(--danger)' : '';
+  document.getElementById('not-used-toggle-btn').style.color = showingNotUsed ? '#fff' : '';
+  if (showingNotUsed) renderNotUsedList();
+}
+
+function renderNotUsedList() {
+  const el = document.getElementById('not-used-list');
+  api('products?not_used=eq.true&order=name.asc').then(r => r.json()).then(items => {
+    if (!items.length) { el.innerHTML = '<div class="empty">No products marked as Not Used</div>'; return; }
+    el.innerHTML = items.map(p => `
+      <div class="not-used-card">
+        ${p.image_url ? `<img class="product-img" src="${p.image_url}" style="opacity:0.5" alt="">` : '<div class="product-img-placeholder" style="opacity:0.5">📦</div>'}
+        <div style="flex:1">
+          <div class="product-name">${p.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${p.category === 'pet_city' ? 'Pet City' : 'Supermarket'}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="restoreProduct(${p.id})">↩ Restore</button>
+      </div>`).join('');
+  });
+}
+
+async function toggleNotUsedProduct(pid, val) {
+  await api(`products?id=eq.${pid}`, { method: 'PATCH', body: JSON.stringify({ not_used: val }) });
+  await loadProducts();
+  if (showingNotUsed) renderNotUsedList();
+}
+
+async function restoreProduct(pid) {
+  await toggleNotUsedProduct(pid, false);
+  toast('✓ Product restored!');
+}
+
 function renderStockList() {
   const el = document.getElementById('stock-list');
-  if (!products.length) { el.innerHTML = '<div class="empty">Δεν βρέθηκαν προϊόντα</div>'; return; }
+  renderSubcatBar();
 
-  const items = products.filter(p => p.category === activeCategory);
-  if (!items.length) { el.innerHTML = '<div class="empty">No products in this category</div>'; return; }
+  let items = products.filter(p => p.category === activeCategory);
+  if (activeSubcat) items = items.filter(p => p.subcategory === activeSubcat);
+  if (!items.length) { el.innerHTML = '<div class="empty">No products found</div>'; return; }
 
   let html = '';
   items.forEach(p => {
-    const countAs = p.unit === 'κιβώτιο' ? 'Box' : 'Pieces';
+    const isBox = p.unit === 'κιβώτιο';
     const imgEl = p.image_url
       ? `<img class="product-img" src="${p.image_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
       : '';
     html += `
-      <div class="product-card">
+      <div class="product-card" id="card-${p.id}">
         ${imgEl}
         <div class="product-img-placeholder" style="${p.image_url ? 'display:none' : ''}">📦</div>
-        <div>
+        <div style="flex:1">
           <div class="product-name">${p.name}</div>
-          <div class="product-unit-badge">Count as: ${countAs} · Min: ${p.min_stock}</div>
+          <div class="product-unit-badge">Count as: ${isBox ? 'Box' : 'Pieces'}</div>
         </div>
-        <div class="qty-inputs">
-          <div class="qty-group">
-            <span class="qty-label">Pieces</span>
-            <input class="qty-input" type="number" min="0" step="0.5" id="tmx-${p.id}" value="0">
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+          <div class="qty-inputs">
+            <div class="qty-group">
+              <span class="qty-label ${!isBox ? 'primary-unit' : ''}">Pieces</span>
+              <input class="qty-input ${!isBox ? 'primary-unit' : ''}" type="number" min="0" step="0.5" id="tmx-${p.id}" value="0">
+            </div>
+            <div class="qty-group">
+              <span class="qty-label ${isBox ? 'primary-unit' : ''}">Box</span>
+              <input class="qty-input ${isBox ? 'primary-unit' : ''}" type="number" min="0" id="kiv-${p.id}" value="0">
+            </div>
           </div>
-          <div class="qty-group">
-            <span class="qty-label">Box</span>
-            <input class="qty-input" type="number" min="0" id="kiv-${p.id}" value="0">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="toggle-wrap">
+              <span class="toggle-label">Not Used</span>
+              <label style="position:relative;display:inline-block;width:36px;height:20px;">
+                <input type="checkbox" id="nu-${p.id}" onchange="toggleNotUsedProduct(${p.id}, this.checked)" style="opacity:0;width:0;height:0;">
+                <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s;" id="nu-span-${p.id}"></span>
+              </label>
+            </div>
+            <div class="toggle-wrap">
+              <span class="toggle-label" style="color:var(--danger)">⚡ SOS</span>
+              <label style="position:relative;display:inline-block;width:36px;height:20px;">
+                <input type="checkbox" id="sos-${p.id}" style="opacity:0;width:0;height:0;" onchange="toggleSOS(${p.id}, this.checked)">
+                <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s;" id="sos-span-${p.id}"></span>
+              </label>
+            </div>
           </div>
         </div>
       </div>`;
   });
   el.innerHTML = html;
+
+  // Style toggle switches
+  items.forEach(p => {
+    styleToggle('nu-' + p.id, 'nu-span-' + p.id, '#e63946');
+    styleToggle('sos-' + p.id, 'sos-span-' + p.id, '#e63946');
+  });
+}
+
+function styleToggle(checkId, spanId, color) {
+  const cb = document.getElementById(checkId);
+  const sp = document.getElementById(spanId);
+  if (!cb || !sp) return;
+  const update = () => { sp.style.background = cb.checked ? color : '#ccc'; };
+  cb.addEventListener('change', update);
+  update();
+}
+
+function toggleSOS(pid, val) {
+  const card = document.getElementById('card-' + pid);
+  if (card) card.classList.toggle('sos-active', val);
 }
 
 // ── SUBMIT STOCK ──
@@ -931,7 +1147,8 @@ async function submitStock() {
     const kiv = parseInt(document.getElementById('kiv-' + p.id)?.value) || 0;
     const current = p.unit === 'κιβώτιο' ? kiv : tmx;
     const needed = Math.max(0, Math.ceil(p.min_stock - current));
-    orderData.push({ product: p, qty_pieces: tmx, qty_boxes: kiv, order_qty: needed });
+    const isSos = document.getElementById('sos-' + p.id)?.checked || false;
+    orderData.push({ product: p, qty_pieces: tmx, qty_boxes: kiv, order_qty: needed, is_sos: isSos });
   });
 
   // Save to DB
@@ -947,13 +1164,27 @@ async function submitStock() {
       product_id: d.product.id,
       qty_pieces: d.qty_pieces,
       qty_boxes: d.qty_boxes,
-      order_qty: d.order_qty
+      order_qty: d.order_qty,
+      is_sos: d.is_sos || false
     }));
     await api('stock_entry_items', { method: 'POST', body: JSON.stringify(items) });
     toast('✓ Το stock καταχωρήθηκε!');
   } catch(e) {
     toast('⚠ Αποθήκευση απέτυχε – τα δεδομένα εμφανίζονται κανονικά', true);
   }
+
+  // Save staff manual rows too
+  const manualRows = document.querySelectorAll('#staff-manual-rows .product-card');
+  manualRows.forEach(row => {
+    const id = row.id;
+    const name = document.getElementById(id + '-name')?.value?.trim();
+    const unit = document.getElementById(id + '-unit')?.value;
+    const qty = parseFloat(document.getElementById(id + '-qty')?.value) || 0;
+    if (name && qty > 0) {
+      orderData.push({ product: { name, unit, category: activeCategory, id: 'manual' }, qty_pieces: qty, qty_boxes: 0, order_qty: qty, is_sos: false, isManual: true, manualName: name, manualUnit: unit });
+    }
+  });
+  document.getElementById('staff-manual-rows').innerHTML = '';
 
   // Reset form and show success
   toast('✓ Stock submitted successfully!');
@@ -1024,7 +1255,8 @@ async function openSubmission(entryId, submittedBy, date) {
     product: item.products,
     qty_pieces: parseFloat(item.qty_pieces) || 0,
     qty_boxes: parseInt(item.qty_boxes) || 0,
-    order_qty: parseInt(item.order_qty) || 0
+    order_qty: parseInt(item.order_qty) || 0,
+    is_sos: item.is_sos || false
   }));
 
   renderReviewDetail();
@@ -1071,9 +1303,10 @@ function renderReviewDetail() {
 
     items.forEach((d, i) => {
       const hasOrder = d.order_qty > 0;
+      const isSos = d.is_sos;
       html += `
-        <tr class="${hasOrder ? '' : 'zero-row'}" id="row-${cat.key}-${i}">
-          <td>${d.product.name}</td>
+        <tr class="${isSos ? 'sos-row' : (hasOrder ? '' : 'zero-row')}" id="row-${cat.key}-${i}">
+          <td>${d.product.name}${isSos ? '<span class="sos-badge">SOS</span>' : ''}</td>
           <td class="qty-cell">${d.qty_pieces % 1 !== 0 ? d.qty_pieces.toFixed(1) : d.qty_pieces} / ${d.qty_boxes}</td>
           <td>${d.product.unit}</td>
           <td class="qty-cell">${d.product.min_stock}</td>
@@ -1216,9 +1449,15 @@ function exportPDF(category) {
 }
 
 // ── ADMIN ──
-function renderAdminList() {
+async function renderAdminList() {
   const el = document.getElementById('admin-list');
-  if (!products.length) { el.innerHTML = '<div class="empty">Δεν βρέθηκαν προϊόντα</div>'; return; }
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  const notUsedFlag = adminProductView === 'notused';
+  const res = await api(`products?not_used=eq.${notUsedFlag}&order=sort_order.asc,id.asc`);
+  const allProds = await res.json();
+
+  if (!allProds.length) { el.innerHTML = `<div class="empty">${notUsedFlag ? 'No not-used products' : 'No products'}</div>`; return; }
 
   const categories = [
     { key: 'pet_city', label: '🐾 Pet City' },
@@ -1227,9 +1466,9 @@ function renderAdminList() {
 
   let html = '';
   categories.forEach(cat => {
-    const items = products.filter(p => p.category === cat.key);
+    const items = allProds.filter(p => p.category === cat.key);
     if (!items.length) return;
-    html += `<div class="section-label">${cat.label} (${items.length} είδη)</div>`;
+    html += `<div class="section-label">${cat.label} (${items.length})</div>`;
     items.forEach(p => {
       html += `
         <div class="admin-product-row">
@@ -1237,11 +1476,15 @@ function renderAdminList() {
             ? `<img class="product-img" src="${p.image_url}" onerror="this.style.opacity=0.2" alt="">`
             : `<div class="product-img-placeholder">📦</div>`}
           <div>
-            <div class="admin-product-info">${p.name}</div>
-            <div class="admin-product-meta">Min: ${p.min_stock} ${p.unit}</div>
+            <div class="admin-product-info">${p.name}${p.not_used ? ' <span style="font-size:11px;color:var(--text3)">(not used)</span>' : ''}</div>
+            <div class="admin-product-meta">Min: ${p.min_stock} · ${p.unit}${p.subcategory ? ' · ' + p.subcategory : ''}</div>
           </div>
           <div class="admin-actions">
-            <button class="btn btn-secondary btn-sm" onclick="openProductModal(${p.id})">✏️ Επεξεργασία</button>
+            ${notUsedFlag
+              ? `<button class="btn btn-secondary btn-sm" onclick="toggleNotUsedProduct(${p.id}, false)">↩ Restore</button>`
+              : `<button class="btn btn-secondary btn-sm" onclick="openProductModal(${p.id})">✏️ Edit</button>
+                 <button class="btn btn-danger btn-sm" onclick="toggleNotUsedProduct(${p.id}, true)">⛔ Not Used</button>`
+            }
             <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑</button>
           </div>
         </div>`;
@@ -1261,6 +1504,7 @@ function openProductModal(id) {
     document.getElementById('f-unit').value = p.unit;
     document.getElementById('f-min').value = p.min_stock;
     document.getElementById('f-img').value = p.image_url || '';
+    document.getElementById('f-subcat').value = p.subcategory || '';
   } else {
     document.getElementById('modal-title').textContent = 'Νέο Προϊόν';
     document.getElementById('f-name').value = '';
@@ -1268,6 +1512,7 @@ function openProductModal(id) {
     document.getElementById('f-unit').value = 'τεμάχιο';
     document.getElementById('f-min').value = '0';
     document.getElementById('f-img').value = '';
+    document.getElementById('f-subcat').value = '';
   }
   modal.classList.add('open');
 }
@@ -1284,6 +1529,7 @@ async function saveProduct() {
     unit: document.getElementById('f-unit').value,
     min_stock: parseInt(document.getElementById('f-min').value) || 0,
     image_url: document.getElementById('f-img').value.trim() || null,
+    subcategory: document.getElementById('f-subcat').value || null,
   };
   if (!data.name) { toast('Βάλε όνομα προϊόντος', true); return; }
 
@@ -1298,6 +1544,7 @@ async function saveProduct() {
   closeProductModal();
   await loadProducts();
 loadEmployees();
+loadSubcats();
 }
 
 async function deleteProduct(id) {
@@ -1306,6 +1553,7 @@ async function deleteProduct(id) {
   toast('Διαγράφηκε');
   await loadProducts();
 loadEmployees();
+loadSubcats();
 }
 
 
@@ -1388,6 +1636,118 @@ async function deleteEmployee(id) {
 document.getElementById('employee-modal').addEventListener('click', function(e) {
   if (e.target === this) closeEmployeeModal();
 });
+
+
+// ── STAFF MANUAL ROWS ──
+let staffManualCounter = 0;
+function addStaffManualRow() {
+  const container = document.getElementById('staff-manual-rows');
+  const id = 'sm-' + staffManualCounter++;
+  const div = document.createElement('div');
+  div.className = 'product-card';
+  div.id = id;
+  div.style.background = 'var(--warn-light)';
+  div.style.borderColor = 'var(--warn)';
+  div.innerHTML = `
+    <div class="product-img-placeholder">✏️</div>
+    <div style="flex:1">
+      <input style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;font-weight:600" placeholder="Product name" id="${id}-name">
+      <div style="margin-top:6px;">
+        <select style="border:1.5px solid var(--border);border-radius:6px;padding:6px;font-family:inherit;font-size:12px;" id="${id}-unit">
+          <option value="τεμάχιο">Pieces</option>
+          <option value="κιβώτιο">Box</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+      <div class="qty-inputs">
+        <div class="qty-group">
+          <span class="qty-label">Qty</span>
+          <input class="qty-input primary-unit" type="number" min="0" value="1" id="${id}-qty">
+        </div>
+      </div>
+      <button onclick="document.getElementById('${id}').remove()" style="font-size:18px;background:none;border:none;cursor:pointer;color:var(--text3)">✕</button>
+    </div>`;
+  container.appendChild(div);
+}
+
+// ── SUBCATEGORIES ──
+let subcats = [];
+let editingSubcatId = null;
+
+async function loadSubcats() {
+  const res = await api('subcategories?order=sort_order.asc,name.asc');
+  subcats = await res.json();
+  renderSubcatsList();
+  populateSubcatDropdown();
+}
+
+function populateSubcatDropdown() {
+  const sel = document.getElementById('f-subcat');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— None —</option>' +
+    subcats.filter(s => s.category === 'pet_city').map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+  sel.value = current;
+}
+
+function renderSubcatsList() {
+  const el = document.getElementById('subcats-list');
+  if (!el) return;
+  if (!subcats.length) { el.innerHTML = '<div class="empty">No categories yet</div>'; return; }
+  el.innerHTML = subcats.map(s => `
+    <div class="admin-product-row">
+      <div class="product-img-placeholder" style="font-size:18px">🏷️</div>
+      <div>
+        <div class="admin-product-info">${s.name}</div>
+        <div class="admin-product-meta">${s.category === 'pet_city' ? '🐾 Pet City' : '🛒 Supermarket'}</div>
+      </div>
+      <div class="admin-actions">
+        <button class="btn btn-danger btn-sm" onclick="deleteSubcat(${s.id})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function openSubcatModal(id) {
+  editingSubcatId = id;
+  document.getElementById('sc-name').value = '';
+  document.getElementById('subcat-modal').classList.add('open');
+}
+
+function closeSubcatModal() {
+  document.getElementById('subcat-modal').classList.remove('open');
+}
+
+async function saveSubcat() {
+  const name = document.getElementById('sc-name').value.trim();
+  if (!name) { toast('Enter a category name', true); return; }
+  await api('subcategories', { method: 'POST', body: JSON.stringify({ name, category: 'pet_city' }) });
+  toast('✓ Category added!');
+  closeSubcatModal();
+  await loadSubcats();
+}
+
+async function deleteSubcat(id) {
+  if (!confirm('Delete this category?')) return;
+  await api(`subcategories?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  toast('Deleted');
+  await loadSubcats();
+}
+
+document.getElementById('subcat-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeSubcatModal();
+});
+
+// ── ADMIN PRODUCT VIEW TOGGLE ──
+let adminProductView = 'active';
+function setAdminProductView(view) {
+  adminProductView = view;
+  document.getElementById('admin-show-active-btn').style.background = view === 'active' ? 'var(--accent)' : '';
+  document.getElementById('admin-show-active-btn').style.color = view === 'active' ? '#fff' : '';
+  document.getElementById('admin-show-notused-btn').style.background = view === 'notused' ? 'var(--danger)' : '';
+  document.getElementById('admin-show-notused-btn').style.color = view === 'notused' ? '#fff' : '';
+  renderAdminList();
+}
 
 // ── TOAST ──
 function toast(msg, isError = false) {
